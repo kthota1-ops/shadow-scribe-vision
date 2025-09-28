@@ -1,0 +1,286 @@
+import { useState, useRef, useEffect } from "react";
+import { FileText, Network, HardDrive, Shield, AlertTriangle, Zap } from "lucide-react";
+import { Card } from "./ui/card";
+
+interface GraphNode {
+  id: string;
+  type: "file" | "network" | "registry" | "process" | "threat" | "system";
+  label: string;
+  x: number;
+  y: number;
+  connections: string[];
+  details: {
+    description: string;
+    riskLevel: "low" | "medium" | "high" | "critical";
+    metadata: Record<string, string>;
+  };
+}
+
+const mockNodes: GraphNode[] = [
+  {
+    id: "1",
+    type: "file",
+    label: "malware.exe",
+    x: 200,
+    y: 150,
+    connections: ["2", "3"],
+    details: {
+      description: "Suspicious executable file detected",
+      riskLevel: "critical",
+      metadata: {
+        "File Size": "2.3 MB",
+        "Hash (MD5)": "d41d8cd98f00b204e9800998ecf8427e",
+        "First Seen": "2024-01-15 14:30:22"
+      }
+    }
+  },
+  {
+    id: "2",
+    type: "network",
+    label: "TCP 443",
+    x: 400,
+    y: 100,
+    connections: ["4"],
+    details: {
+      description: "Outbound HTTPS connection",
+      riskLevel: "high",
+      metadata: {
+        "Destination": "185.123.45.67",
+        "Port": "443",
+        "Protocol": "HTTPS"
+      }
+    }
+  },
+  {
+    id: "3",
+    type: "registry",
+    label: "HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+    x: 300,
+    y: 300,
+    connections: [],
+    details: {
+      description: "Registry modification for persistence",
+      riskLevel: "high",
+      metadata: {
+        "Action": "Write",
+        "Value": "malware.exe",
+        "Type": "REG_SZ"
+      }
+    }
+  },
+  {
+    id: "4",
+    type: "threat",
+    label: "C&C Server",
+    x: 600,
+    y: 150,
+    connections: [],
+    details: {
+      description: "Command and control server communication",
+      riskLevel: "critical",
+      metadata: {
+        "IP": "185.123.45.67",
+        "Geolocation": "Russia",
+        "Known Threat": "APT29"
+      }
+    }
+  }
+];
+
+export const GraphView = () => {
+  const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
+  const [scale, setScale] = useState(1);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  const getNodeIcon = (type: GraphNode["type"]) => {
+    switch (type) {
+      case "file": return FileText;
+      case "network": return Network;
+      case "registry": return HardDrive;
+      case "process": return Zap;
+      case "threat": return AlertTriangle;
+      case "system": return Shield;
+      default: return FileText;
+    }
+  };
+
+  const getNodeColor = (riskLevel: string) => {
+    switch (riskLevel) {
+      case "critical": return "#EF4444"; // Red
+      case "high": return "#F97316"; // Orange
+      case "medium": return "#EAB308"; // Yellow
+      case "low": return "#22C55E"; // Green
+      default: return "#6B7280"; // Gray
+    }
+  };
+
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    const newScale = Math.max(0.5, Math.min(3, scale + e.deltaY * -0.001));
+    setScale(newScale);
+  };
+
+  return (
+    <div className="h-full bg-background-tertiary relative overflow-hidden">
+      {/* Graph Canvas */}
+      <svg
+        ref={svgRef}
+        className="w-full h-full cursor-grab active:cursor-grabbing"
+        onWheel={handleWheel}
+        onClick={() => setSelectedNode(null)}
+      >
+        <g transform={`translate(${offset.x}, ${offset.y}) scale(${scale})`}>
+          {/* Connections */}
+          {mockNodes.map((node) =>
+            node.connections.map((targetId) => {
+              const targetNode = mockNodes.find((n) => n.id === targetId);
+              if (!targetNode) return null;
+              
+              return (
+                <line
+                  key={`${node.id}-${targetId}`}
+                  x1={node.x}
+                  y1={node.y}
+                  x2={targetNode.x}
+                  y2={targetNode.y}
+                  stroke="hsl(var(--primary))"
+                  strokeWidth="2"
+                  opacity="0.6"
+                  className="animate-pulse"
+                />
+              );
+            })
+          )}
+
+          {/* Nodes */}
+          {mockNodes.map((node) => {
+            const Icon = getNodeIcon(node.type);
+            return (
+              <g
+                key={node.id}
+                transform={`translate(${node.x}, ${node.y})`}
+                className="cursor-pointer hover:scale-110 transition-transform duration-200"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedNode(node);
+                }}
+              >
+                {/* Node glow effect */}
+                <circle
+                  cx="0"
+                  cy="0"
+                  r="35"
+                  fill={getNodeColor(node.details.riskLevel)}
+                  opacity="0.2"
+                  className="animate-pulse"
+                />
+                
+                {/* Node background */}
+                <circle
+                  cx="0"
+                  cy="0"
+                  r="25"
+                  fill="hsl(var(--card))"
+                  stroke={getNodeColor(node.details.riskLevel)}
+                  strokeWidth="3"
+                />
+                
+                {/* Node icon */}
+                <foreignObject x="-12" y="-12" width="24" height="24">
+                  <Icon
+                    className="w-6 h-6"
+                    style={{ color: getNodeColor(node.details.riskLevel) }}
+                  />
+                </foreignObject>
+                
+                {/* Node label */}
+                <text
+                  x="0"
+                  y="45"
+                  textAnchor="middle"
+                  className="fill-foreground text-sm font-medium"
+                  style={{ fontSize: "12px" }}
+                >
+                  {node.label.length > 15 ? node.label.slice(0, 15) + "..." : node.label}
+                </text>
+              </g>
+            );
+          })}
+        </g>
+      </svg>
+
+      {/* Controls */}
+      <div className="absolute top-4 right-4 flex flex-col gap-2">
+        <button
+          onClick={() => setScale(s => Math.min(3, s + 0.2))}
+          className="w-10 h-10 rounded-lg bg-background-secondary border border-border hover:bg-accent transition-colors text-foreground text-lg font-bold"
+        >
+          +
+        </button>
+        <button
+          onClick={() => setScale(s => Math.max(0.5, s - 0.2))}
+          className="w-10 h-10 rounded-lg bg-background-secondary border border-border hover:bg-accent transition-colors text-foreground text-lg font-bold"
+        >
+          −
+        </button>
+        <button
+          onClick={() => { setScale(1); setOffset({ x: 0, y: 0 }); }}
+          className="w-10 h-10 rounded-lg bg-background-secondary border border-border hover:bg-accent transition-colors text-foreground text-xs font-medium"
+        >
+          Reset
+        </button>
+      </div>
+
+      {/* Node Details Panel */}
+      {selectedNode && (
+        <Card className="absolute top-4 left-4 w-80 bg-background-secondary border-border shadow-glow-soft">
+          <div className="p-4">
+            <div className="flex items-center gap-3 mb-3">
+              {(() => {
+                const Icon = getNodeIcon(selectedNode.type);
+                return <Icon className="w-6 h-6" style={{ color: getNodeColor(selectedNode.details.riskLevel) }} />;
+              })()}
+              <div>
+                <h3 className="font-semibold text-foreground">{selectedNode.label}</h3>
+                <p className="text-sm text-muted-foreground capitalize">{selectedNode.type}</p>
+              </div>
+            </div>
+            
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm text-muted-foreground">Description</p>
+                <p className="text-sm text-foreground">{selectedNode.details.description}</p>
+              </div>
+              
+              <div>
+                <p className="text-sm text-muted-foreground">Risk Level</p>
+                <span
+                  className="inline-block px-2 py-1 rounded text-xs font-medium uppercase"
+                  style={{
+                    backgroundColor: getNodeColor(selectedNode.details.riskLevel) + "20",
+                    color: getNodeColor(selectedNode.details.riskLevel)
+                  }}
+                >
+                  {selectedNode.details.riskLevel}
+                </span>
+              </div>
+              
+              <div>
+                <p className="text-sm text-muted-foreground mb-2">Metadata</p>
+                <div className="space-y-1">
+                  {Object.entries(selectedNode.details.metadata).map(([key, value]) => (
+                    <div key={key} className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">{key}:</span>
+                      <span className="text-foreground font-mono">{value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+};
