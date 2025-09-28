@@ -394,27 +394,34 @@ export const GraphView = () => {
 
       {/* Node Details Panel */}
       {selectedNode && (
-        <Card className="absolute top-4 left-4 w-80 bg-background-secondary border-border shadow-glow-soft">
+        <Card 
+          className="absolute w-80 bg-background-secondary border-border shadow-glow-soft overflow-hidden"
+          style={{
+            left: Math.min(window.innerWidth - 340, Math.max(20, (selectedNode.x * scale) + offset.x + 50)),
+            top: Math.min(window.innerHeight - 300, Math.max(20, (selectedNode.y * scale) + offset.y - 150)),
+            zIndex: 50
+          }}
+        >
           <div className="p-4">
             <div className="flex items-center gap-3 mb-3">
               {(() => {
                 const Icon = getNodeIcon(selectedNode.type);
-                return <Icon className="w-6 h-6" style={{ color: getNodeColor(selectedNode.details.riskLevel) }} />;
+                return <Icon className="w-6 h-6 flex-shrink-0" style={{ color: getNodeColor(selectedNode.details.riskLevel) }} />;
               })()}
-              <div>
-                <h3 className="font-semibold text-foreground">{selectedNode.label}</h3>
+              <div className="min-w-0 flex-1">
+                <h3 className="font-semibold text-foreground truncate">{selectedNode.label}</h3>
                 <p className="text-sm text-muted-foreground capitalize">{selectedNode.type}</p>
               </div>
             </div>
             
             <div className="space-y-3">
               <div>
-                <p className="text-sm text-muted-foreground">Description</p>
-                <p className="text-sm text-foreground">{selectedNode.details.description}</p>
+                <p className="text-sm text-muted-foreground mb-1">Description</p>
+                <p className="text-sm text-foreground break-words">{selectedNode.details.description}</p>
               </div>
               
               <div>
-                <p className="text-sm text-muted-foreground">Risk Level</p>
+                <p className="text-sm text-muted-foreground mb-1">Risk Level</p>
                 <span
                   className="inline-block px-2 py-1 rounded text-xs font-medium uppercase"
                   style={{
@@ -430,9 +437,9 @@ export const GraphView = () => {
                 <p className="text-sm text-muted-foreground mb-2">Metadata</p>
                 <div className="space-y-1">
                   {Object.entries(selectedNode.details.metadata).map(([key, value]) => (
-                    <div key={key} className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">{key}:</span>
-                      <span className="text-foreground font-mono">{value}</span>
+                    <div key={key} className="flex justify-between text-xs gap-2">
+                      <span className="text-muted-foreground flex-shrink-0">{key}:</span>
+                      <span className="text-foreground font-mono break-all text-right">{value}</span>
                     </div>
                   ))}
                 </div>
