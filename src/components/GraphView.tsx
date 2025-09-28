@@ -95,6 +95,8 @@ export const GraphView = () => {
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [nodes, setNodes] = useState(mockNodes);
   const [openWindows, setOpenWindows] = useState<Set<string>>(new Set());
+  const [windowPositions, setWindowPositions] = useState<Record<string, { x: number; y: number }>>({});
+  const [draggedWindow, setDraggedWindow] = useState<string | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
   const getNodeIcon = (type: GraphNode["type"]) => {
@@ -176,6 +178,14 @@ export const GraphView = () => {
 
   const openDetailWindow = (nodeId: string) => {
     setOpenWindows(prev => new Set([...prev, nodeId]));
+    // Set initial position if not set
+    if (!windowPositions[nodeId]) {
+      const windowCount = openWindows.size;
+      setWindowPositions(prev => ({
+        ...prev,
+        [nodeId]: { x: 100 + (windowCount * 50), y: 100 + (windowCount * 50) }
+      }));
+    }
   };
 
   const closeDetailWindow = (nodeId: string) => {
@@ -185,6 +195,39 @@ export const GraphView = () => {
       return newSet;
     });
   };
+
+  const handleWindowMouseDown = useCallback((e: React.MouseEvent, nodeId: string) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setDraggedWindow(nodeId);
+    
+    const startMouseX = e.clientX;
+    const startMouseY = e.clientY;
+    const startWindowX = windowPositions[nodeId]?.x || 100;
+    const startWindowY = windowPositions[nodeId]?.y || 100;
+    
+    const handleMouseMove = (e: MouseEvent) => {
+      const deltaX = e.clientX - startMouseX;
+      const deltaY = e.clientY - startMouseY;
+      
+      setWindowPositions(prev => ({
+        ...prev,
+        [nodeId]: {
+          x: Math.max(0, Math.min(window.innerWidth - 384, startWindowX + deltaX)),
+          y: Math.max(0, Math.min(window.innerHeight - 100, startWindowY + deltaY))
+        }
+      }));
+    };
+    
+    const handleMouseUp = () => {
+      setDraggedWindow(null);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }, [windowPositions]);
 
   return (
     <div className="h-full bg-background-tertiary relative overflow-hidden">
@@ -476,38 +519,48 @@ export const GraphView = () => {
         if (!node) return null;
 
         const Icon = getNodeIcon(node.type);
+        const position = windowPositions[nodeId] || { x: 100 + (index * 50), y: 100 + (index * 50) };
+        const isDragged = draggedWindow === nodeId;
         
         return (
           <Card
             key={nodeId}
-            className="fixed w-96 max-h-[80vh] bg-background border-border shadow-xl overflow-hidden animate-scale-in"
+            className={`fixed w-96 max-h-[80vh] bg-background border-border shadow-xl overflow-hidden animate-scale-in ${isDragged ? 'cursor-grabbing' : ''}`}
             style={{
-              left: 100 + (index * 50),
-              top: 100 + (index * 50),
+              left: position.x,
+              top: position.y,
               zIndex: 100 + index
             }}
           >
-            <div className="flex items-center justify-between p-4 border-b border-border bg-background-secondary">
-              <div className="flex items-center gap-3">
-                <Icon className="w-6 h-6 flex-shrink-0" style={{ color: getNodeColor(node.details.riskLevel) }} />
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-semibold text-foreground">{node.label}</h3>
-                  <p className="text-sm text-muted-foreground capitalize">{node.type}</p>
-                </div>
-              </div>
+            {/* Close button positioned above title */}
+            <div className="absolute -top-2 -right-2 z-10">
               <button
                 onClick={() => closeDetailWindow(nodeId)}
-                className="w-8 h-8 rounded-lg bg-background border border-border hover:bg-accent transition-colors flex items-center justify-center text-muted-foreground hover:text-foreground"
+                className="w-8 h-8 rounded-full bg-destructive hover:bg-destructive/80 transition-colors flex items-center justify-center text-destructive-foreground shadow-lg"
               >
                 ×
               </button>
+            </div>
+
+            {/* Draggable header */}
+            <div 
+              className={`flex items-center gap-3 p-4 border-b border-border bg-background-secondary cursor-grab ${isDragged ? 'cursor-grabbing' : 'cursor-grab'}`}
+              onMouseDown={(e) => handleWindowMouseDown(e, nodeId)}
+            >
+              <Icon className="w-6 h-6 flex-shrink-0" style={{ color: getNodeColor(node.details.riskLevel) }} />
+              <div className="min-w-0 flex-1">
+                <h3 className="font-semibold text-foreground">{node.label}</h3>
+                <p className="text-sm text-muted-foreground capitalize">{node.type}</p>
+              </div>
             </div>
             
             <div className="p-4 overflow-y-auto max-h-[calc(80vh-80px)]">
               <div className="space-y-4">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground mb-2">Description</p>
-                  <p className="text-sm text-foreground leading-relaxed">{node.details.description}</p>
+                  <div className="overflow-x-auto">
+                    <p className="text-sm text-foreground leading-relaxed whitespace-nowrap">{node.details.description}</p>
+                  </div>
                 </div>
                 
                 <div>
@@ -529,7 +582,9 @@ export const GraphView = () => {
                     {Object.entries(node.details.metadata).map(([key, value]) => (
                       <div key={key} className="bg-background-tertiary rounded-lg p-3">
                         <p className="text-xs font-medium text-muted-foreground mb-1">{key}</p>
-                        <p className="text-sm text-foreground font-mono break-all">{value}</p>
+                        <div className="overflow-x-auto">
+                          <p className="text-sm text-foreground font-mono whitespace-nowrap">{value}</p>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -546,8 +601,10 @@ export const GraphView = () => {
                         const ConnectedIcon = getNodeIcon(connectedNode.type);
                         return (
                           <div key={connId} className="flex items-center gap-2 p-2 bg-background-tertiary rounded">
-                            <ConnectedIcon className="w-4 h-4" style={{ color: getNodeColor(connectedNode.details.riskLevel) }} />
-                            <span className="text-sm text-foreground">{connectedNode.label}</span>
+                            <ConnectedIcon className="w-4 h-4 flex-shrink-0" style={{ color: getNodeColor(connectedNode.details.riskLevel) }} />
+                            <div className="overflow-x-auto flex-1">
+                              <span className="text-sm text-foreground whitespace-nowrap">{connectedNode.label}</span>
+                            </div>
                           </div>
                         );
                       })
