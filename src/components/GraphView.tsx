@@ -124,27 +124,43 @@ export const GraphView = () => {
     setScale(newScale);
   };
 
-  const handleNodeDrag = useCallback((nodeId: string, deltaX: number, deltaY: number) => {
+  const handleNodeDrag = useCallback((nodeId: string, newX: number, newY: number) => {
     setNodes(prevNodes => 
       prevNodes.map(node => 
         node.id === nodeId 
-          ? { ...node, x: node.x + deltaX / scale, y: node.y + deltaY / scale }
+          ? { ...node, x: newX, y: newY }
           : node
       )
     );
-  }, [scale]);
+  }, []);
 
   const handleMouseDown = useCallback((e: React.MouseEvent, nodeId: string) => {
     e.stopPropagation();
+    e.preventDefault();
     setDraggedNode(nodeId);
     
-    const startX = e.clientX;
-    const startY = e.clientY;
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    
+    const node = nodes.find(n => n.id === nodeId);
+    if (!node) return;
+    
+    // Store initial positions
+    const startMouseX = e.clientX;
+    const startMouseY = e.clientY;
+    const startNodeX = node.x;
+    const startNodeY = node.y;
     
     const handleMouseMove = (e: MouseEvent) => {
-      const deltaX = e.clientX - startX;
-      const deltaY = e.clientY - startY;
-      handleNodeDrag(nodeId, deltaX, deltaY);
+      // Calculate mouse movement in SVG coordinates
+      const mouseX = (e.clientX - startMouseX) / scale;
+      const mouseY = (e.clientY - startMouseY) / scale;
+      
+      // Update node position relative to its starting position
+      const newX = startNodeX + mouseX;
+      const newY = startNodeY + mouseY;
+      
+      handleNodeDrag(nodeId, newX, newY);
     };
     
     const handleMouseUp = () => {
@@ -155,7 +171,7 @@ export const GraphView = () => {
     
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-  }, [handleNodeDrag]);
+  }, [handleNodeDrag, scale, nodes]);
 
   return (
     <div className="h-full bg-background-tertiary relative overflow-hidden">
@@ -208,7 +224,8 @@ export const GraphView = () => {
                 className={`cursor-pointer transition-all duration-300 ease-smooth ${isDragged ? 'cursor-grabbing' : 'cursor-grab'}`}
                 style={{ 
                   transformOrigin: '0 0',
-                  transform: `translate(${node.x}px, ${node.y}px) scale(${isHovered || isDragged ? 1.2 : isSelected ? 1.1 : 1})`
+                  transform: `translate(${node.x}px, ${node.y}px) scale(${isHovered && !isDragged ? 1.15 : isSelected ? 1.05 : 1})`,
+                  transition: isDragged ? 'none' : 'transform 0.2s ease-out'
                 }}
                 onMouseEnter={() => setHoveredNode(node.id)}
                 onMouseLeave={() => setHoveredNode(null)}
@@ -222,26 +239,25 @@ export const GraphView = () => {
                 <circle
                   cx="0"
                   cy="0"
-                  r={isHovered || isDragged ? "45" : "35"}
+                  r={isHovered && !isDragged ? "40" : "35"}
                   fill={getNodeColor(node.details.riskLevel)}
-                  opacity={isHovered || isDragged ? "0.4" : "0.2"}
-                  className={isHovered || isDragged ? "animate-pulse" : ""}
+                  opacity={isHovered && !isDragged ? "0.3" : "0.2"}
+                  className={isHovered && !isDragged ? "animate-pulse" : ""}
                   style={{
-                    filter: isHovered || isDragged ? `blur(3px)` : 'blur(1px)',
-                    transition: 'all 0.3s ease'
+                    filter: isHovered && !isDragged ? `blur(2px)` : 'blur(1px)',
+                    transition: isDragged ? 'none' : 'all 0.2s ease'
                   }}
                 />
                 
                 {/* Middle glow */}
-                {(isHovered || isDragged) && (
+                {isHovered && !isDragged && (
                   <circle
                     cx="0"
                     cy="0"
                     r="30"
                     fill={getNodeColor(node.details.riskLevel)}
-                    opacity="0.6"
-                    className="animate-pulse"
-                    style={{ filter: 'blur(2px)' }}
+                    opacity="0.4"
+                    style={{ filter: 'blur(1px)' }}
                   />
                 )}
                 
