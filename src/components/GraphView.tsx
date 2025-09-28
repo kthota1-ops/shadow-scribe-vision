@@ -107,11 +107,11 @@ export const GraphView = () => {
 
   const getNodeColor = (riskLevel: string) => {
     switch (riskLevel) {
-      case "critical": return "#EF4444"; // Red
-      case "high": return "#F97316"; // Orange
-      case "medium": return "#EAB308"; // Yellow
-      case "low": return "#22C55E"; // Green
-      default: return "#6B7280"; // Gray
+      case "critical": return "hsl(0 84% 60%)"; // destructive
+      case "high": return "hsl(25 95% 53%)"; // orange
+      case "medium": return "hsl(45 93% 47%)"; // yellow  
+      case "low": return "hsl(142 76% 36%)"; // green
+      default: return "hsl(var(--muted-foreground))"; // muted
     }
   };
 
@@ -160,7 +160,16 @@ export const GraphView = () => {
               <g
                 key={node.id}
                 transform={`translate(${node.x}, ${node.y})`}
-                className="cursor-pointer hover:scale-110 transition-transform duration-200"
+                className="cursor-pointer transition-all duration-200 ease-smooth"
+                style={{ transformOrigin: '0 0' }}
+                onMouseEnter={(e) => {
+                  const g = e.currentTarget;
+                  g.style.transform = `translate(${node.x}px, ${node.y}px) scale(1.1)`;
+                }}
+                onMouseLeave={(e) => {
+                  const g = e.currentTarget;
+                  g.style.transform = `translate(${node.x}px, ${node.y}px) scale(1)`;
+                }}
                 onClick={(e) => {
                   e.stopPropagation();
                   setSelectedNode(node);
@@ -187,7 +196,7 @@ export const GraphView = () => {
                 />
                 
                 {/* Node icon */}
-                <foreignObject x="-12" y="-12" width="24" height="24">
+                <foreignObject x="-12" y="-12" width="24" height="24" className="pointer-events-none">
                   <Icon
                     className="w-6 h-6"
                     style={{ color: getNodeColor(node.details.riskLevel) }}
@@ -199,7 +208,7 @@ export const GraphView = () => {
                   x="0"
                   y="45"
                   textAnchor="middle"
-                  className="fill-foreground text-sm font-medium"
+                  className="fill-foreground text-sm font-medium pointer-events-none select-none"
                   style={{ fontSize: "12px" }}
                 >
                   {node.label.length > 15 ? node.label.slice(0, 15) + "..." : node.label}
