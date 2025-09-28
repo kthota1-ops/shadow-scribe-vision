@@ -3,7 +3,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import { Eye, Download, Trash2 } from "lucide-react";
+import { Input } from "./ui/input";
+import { Eye, Download, Trash2, Edit3, Check, X } from "lucide-react";
+import { z } from "zod";
 
 interface AnalysisReport {
   id: string;
@@ -73,8 +75,18 @@ interface PreviousAnalysisProps {
   onSelectReport?: (report: AnalysisReport) => void;
 }
 
+// Validation schema for case name
+const caseNameSchema = z.string()
+  .trim()
+  .min(1, { message: "Case name cannot be empty" })
+  .max(100, { message: "Case name must be less than 100 characters" })
+  .regex(/^[a-zA-Z0-9\s\-_\.]+$/, { message: "Case name can only contain letters, numbers, spaces, hyphens, underscores, and periods" });
+
 export const PreviousAnalysis = ({ onSelectReport }: PreviousAnalysisProps) => {
   const [selectedReport, setSelectedReport] = useState<string | null>(null);
+  const [editingReport, setEditingReport] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState<string>("");
+  const [reports, setReports] = useState<AnalysisReport[]>(mockReports);
 
   const getThreatLevelVariant = (level: string) => {
     switch (level) {
@@ -105,6 +117,38 @@ export const PreviousAnalysis = ({ onSelectReport }: PreviousAnalysisProps) => {
     onSelectReport?.(report);
   };
 
+  const handleEditCaseName = (report: AnalysisReport, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingReport(report.id);
+    setEditValue(report.caseName);
+  };
+
+  const handleSaveCaseName = (reportId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    const validation = caseNameSchema.safeParse(editValue);
+    if (!validation.success) {
+      // You could add toast notification here for validation errors
+      console.error("Validation error:", validation.error.issues[0].message);
+      return;
+    }
+    
+    setReports(prev => prev.map(report => 
+      report.id === reportId 
+        ? { ...report, caseName: validation.data }
+        : report
+    ));
+    
+    setEditingReport(null);
+    setEditValue("");
+  };
+
+  const handleCancelEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingReport(null);
+    setEditValue("");
+  };
+
   return (
     <div className="h-full flex flex-col bg-background p-6">
       <Card className="flex-1 bg-background-secondary border-border">
@@ -132,7 +176,7 @@ export const PreviousAnalysis = ({ onSelectReport }: PreviousAnalysisProps) => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {mockReports.map((report) => (
+                {reports.map((report) => (
                   <TableRow
                     key={report.id}
                     className={`
@@ -145,11 +189,30 @@ export const PreviousAnalysis = ({ onSelectReport }: PreviousAnalysisProps) => {
                     <TableCell className="text-foreground font-mono text-sm">
                       {report.date}
                     </TableCell>
-                    <TableCell className="text-foreground">
-                      <div className="overflow-x-auto max-w-[200px]">
-                        <span className="whitespace-nowrap">{report.caseName}</span>
-                      </div>
-                    </TableCell>
+                     <TableCell className="text-foreground">
+                       <div className="overflow-x-auto max-w-[200px]">
+                         {editingReport === report.id ? (
+                           <Input
+                             value={editValue}
+                             onChange={(e) => setEditValue(e.target.value)}
+                             className="h-8 text-sm bg-background border-primary/50 focus:border-primary"
+                             onClick={(e) => e.stopPropagation()}
+                             onKeyDown={(e) => {
+                               if (e.key === 'Enter') {
+                                 handleSaveCaseName(report.id, e as any);
+                               } else if (e.key === 'Escape') {
+                                 handleCancelEdit(e as any);
+                               }
+                             }}
+                             autoFocus
+                           />
+                         ) : (
+                           <span className="whitespace-nowrap cursor-pointer hover:text-primary transition-colors" onClick={(e) => handleEditCaseName(report, e)}>
+                             {report.caseName}
+                           </span>
+                         )}
+                       </div>
+                     </TableCell>
                     <TableCell className="text-muted-foreground font-mono text-xs">
                       <div className="overflow-x-auto max-w-[150px]">
                         <span className="whitespace-nowrap">{report.fileHash}</span>
@@ -169,34 +232,65 @@ export const PreviousAnalysis = ({ onSelectReport }: PreviousAnalysisProps) => {
                     <TableCell className="text-foreground font-semibold">
                       {report.detections}
                     </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={(e) => handleViewReport(report, e)}
-                          className="h-8 w-8 p-0 hover:bg-primary/20"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={(e) => e.stopPropagation()}
-                          className="h-8 w-8 p-0 hover:bg-primary/20"
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={(e) => e.stopPropagation()}
-                          className="h-8 w-8 p-0 hover:bg-destructive/20 text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
+                     <TableCell>
+                       <div className="flex gap-1">
+                         {editingReport === report.id ? (
+                           <>
+                             <Button
+                               size="sm"
+                               variant="ghost"
+                               onClick={(e) => handleSaveCaseName(report.id, e)}
+                               className="h-8 w-8 p-0 hover:bg-green-500/20 text-green-600"
+                             >
+                               <Check className="h-4 w-4" />
+                             </Button>
+                             <Button
+                               size="sm"
+                               variant="ghost"
+                               onClick={handleCancelEdit}
+                               className="h-8 w-8 p-0 hover:bg-destructive/20 text-destructive"
+                             >
+                               <X className="h-4 w-4" />
+                             </Button>
+                           </>
+                         ) : (
+                           <>
+                             <Button
+                               size="sm"
+                               variant="ghost"
+                               onClick={(e) => handleEditCaseName(report, e)}
+                               className="h-8 w-8 p-0 hover:bg-primary/20"
+                             >
+                               <Edit3 className="h-4 w-4" />
+                             </Button>
+                             <Button
+                               size="sm"
+                               variant="ghost"
+                               onClick={(e) => handleViewReport(report, e)}
+                               className="h-8 w-8 p-0 hover:bg-primary/20"
+                             >
+                               <Eye className="h-4 w-4" />
+                             </Button>
+                             <Button
+                               size="sm"
+                               variant="ghost"
+                               onClick={(e) => e.stopPropagation()}
+                               className="h-8 w-8 p-0 hover:bg-primary/20"
+                             >
+                               <Download className="h-4 w-4" />
+                             </Button>
+                             <Button
+                               size="sm"
+                               variant="ghost"
+                               onClick={(e) => e.stopPropagation()}
+                               className="h-8 w-8 p-0 hover:bg-destructive/20 text-destructive"
+                             >
+                               <Trash2 className="h-4 w-4" />
+                             </Button>
+                           </>
+                         )}
+                       </div>
+                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
