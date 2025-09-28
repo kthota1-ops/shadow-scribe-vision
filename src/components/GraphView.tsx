@@ -94,6 +94,7 @@ export const GraphView = () => {
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [nodes, setNodes] = useState(mockNodes);
+  const [openWindows, setOpenWindows] = useState<Set<string>>(new Set());
   const svgRef = useRef<SVGSVGElement>(null);
 
   const getNodeIcon = (type: GraphNode["type"]) => {
@@ -172,6 +173,18 @@ export const GraphView = () => {
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
   }, [handleNodeDrag, scale, nodes]);
+
+  const openDetailWindow = (nodeId: string) => {
+    setOpenWindows(prev => new Set([...prev, nodeId]));
+  };
+
+  const closeDetailWindow = (nodeId: string) => {
+    setOpenWindows(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(nodeId);
+      return newSet;
+    });
+  };
 
   return (
     <div className="h-full bg-background-tertiary relative overflow-hidden">
@@ -395,12 +408,13 @@ export const GraphView = () => {
       {/* Node Details Panel */}
       {selectedNode && (
         <Card 
-          className="absolute w-80 bg-background-secondary border-border shadow-glow-soft overflow-hidden"
+          className="absolute w-80 bg-background-secondary border-border shadow-glow-soft overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
           style={{
             left: Math.min(window.innerWidth - 340, Math.max(20, (selectedNode.x * scale) + offset.x + 50)),
             top: Math.min(window.innerHeight - 300, Math.max(20, (selectedNode.y * scale) + offset.y - 150)),
             zIndex: 50
           }}
+          onClick={() => openDetailWindow(selectedNode.id)}
         >
           <div className="p-4">
             <div className="flex items-center gap-3 mb-3">
@@ -417,7 +431,7 @@ export const GraphView = () => {
             <div className="space-y-3">
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Description</p>
-                <p className="text-sm text-foreground break-words">{selectedNode.details.description}</p>
+                <p className="text-sm text-foreground break-words line-clamp-2">{selectedNode.details.description}</p>
               </div>
               
               <div>
@@ -436,18 +450,117 @@ export const GraphView = () => {
               <div>
                 <p className="text-sm text-muted-foreground mb-2">Metadata</p>
                 <div className="space-y-1">
-                  {Object.entries(selectedNode.details.metadata).map(([key, value]) => (
+                  {Object.entries(selectedNode.details.metadata).slice(0, 2).map(([key, value]) => (
                     <div key={key} className="flex justify-between text-xs gap-2">
                       <span className="text-muted-foreground flex-shrink-0">{key}:</span>
-                      <span className="text-foreground font-mono break-all text-right">{value}</span>
+                      <span className="text-foreground font-mono break-all text-right truncate">{value}</span>
                     </div>
                   ))}
+                  {Object.entries(selectedNode.details.metadata).length > 2 && (
+                    <p className="text-xs text-muted-foreground">... and more</p>
+                  )}
                 </div>
+              </div>
+              
+              <div className="pt-2 border-t border-border">
+                <p className="text-xs text-muted-foreground text-center">Click to expand details</p>
               </div>
             </div>
           </div>
         </Card>
       )}
+
+      {/* Detail Windows */}
+      {Array.from(openWindows).map((nodeId, index) => {
+        const node = nodes.find(n => n.id === nodeId);
+        if (!node) return null;
+
+        const Icon = getNodeIcon(node.type);
+        
+        return (
+          <Card
+            key={nodeId}
+            className="fixed w-96 max-h-[80vh] bg-background border-border shadow-xl overflow-hidden animate-scale-in"
+            style={{
+              left: 100 + (index * 50),
+              top: 100 + (index * 50),
+              zIndex: 100 + index
+            }}
+          >
+            <div className="flex items-center justify-between p-4 border-b border-border bg-background-secondary">
+              <div className="flex items-center gap-3">
+                <Icon className="w-6 h-6 flex-shrink-0" style={{ color: getNodeColor(node.details.riskLevel) }} />
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-semibold text-foreground">{node.label}</h3>
+                  <p className="text-sm text-muted-foreground capitalize">{node.type}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => closeDetailWindow(nodeId)}
+                className="w-8 h-8 rounded-lg bg-background border border-border hover:bg-accent transition-colors flex items-center justify-center text-muted-foreground hover:text-foreground"
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="p-4 overflow-y-auto max-h-[calc(80vh-80px)]">
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground mb-2">Description</p>
+                  <p className="text-sm text-foreground leading-relaxed">{node.details.description}</p>
+                </div>
+                
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground mb-2">Risk Level</p>
+                  <span
+                    className="inline-block px-3 py-1 rounded-full text-sm font-medium uppercase"
+                    style={{
+                      backgroundColor: getNodeColor(node.details.riskLevel) + "20",
+                      color: getNodeColor(node.details.riskLevel)
+                    }}
+                  >
+                    {node.details.riskLevel}
+                  </span>
+                </div>
+                
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground mb-3">Metadata</p>
+                  <div className="space-y-3">
+                    {Object.entries(node.details.metadata).map(([key, value]) => (
+                      <div key={key} className="bg-background-tertiary rounded-lg p-3">
+                        <p className="text-xs font-medium text-muted-foreground mb-1">{key}</p>
+                        <p className="text-sm text-foreground font-mono break-all">{value}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground mb-2">Connections</p>
+                  <div className="space-y-2">
+                    {node.connections.length > 0 ? (
+                      node.connections.map(connId => {
+                        const connectedNode = nodes.find(n => n.id === connId);
+                        if (!connectedNode) return null;
+                        
+                        const ConnectedIcon = getNodeIcon(connectedNode.type);
+                        return (
+                          <div key={connId} className="flex items-center gap-2 p-2 bg-background-tertiary rounded">
+                            <ConnectedIcon className="w-4 h-4" style={{ color: getNodeColor(connectedNode.details.riskLevel) }} />
+                            <span className="text-sm text-foreground">{connectedNode.label}</span>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No connections</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Card>
+        );
+      })}
     </div>
   );
 };
