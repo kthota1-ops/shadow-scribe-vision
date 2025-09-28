@@ -3,6 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { GraphView } from "./GraphView";
 import { VideoPlayer } from "./VideoPlayer";
 import { FileUpload } from "./FileUpload";
+import { Report } from "./Report";
 
 export const Workspace = () => {
   const [activeTab, setActiveTab] = useState("upload");
@@ -30,6 +31,9 @@ export const Workspace = () => {
             <TabsTrigger value="video" className="flex-1 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               Execution Video
             </TabsTrigger>
+            <TabsTrigger value="report" className="flex-1 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              Report
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -42,6 +46,9 @@ export const Workspace = () => {
           </TabsContent>
           <TabsContent value="video" className="h-full m-0">
             <VideoPlayer />
+          </TabsContent>
+          <TabsContent value="report" className="h-full m-0">
+            <Report />
           </TabsContent>
         </div>
       </Tabs>
