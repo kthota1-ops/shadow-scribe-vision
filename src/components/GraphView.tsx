@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useCallback } from "react";
 import { FileText, Network, HardDrive, Shield, AlertTriangle, Zap } from "lucide-react";
 import { Card } from "./ui/card";
 
@@ -89,8 +89,11 @@ const mockNodes: GraphNode[] = [
 
 export const GraphView = () => {
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
+  const [hoveredNode, setHoveredNode] = useState<string | null>(null);
+  const [draggedNode, setDraggedNode] = useState<string | null>(null);
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [nodes, setNodes] = useState(mockNodes);
   const svgRef = useRef<SVGSVGElement>(null);
 
   const getNodeIcon = (type: GraphNode["type"]) => {
@@ -121,6 +124,39 @@ export const GraphView = () => {
     setScale(newScale);
   };
 
+  const handleNodeDrag = useCallback((nodeId: string, deltaX: number, deltaY: number) => {
+    setNodes(prevNodes => 
+      prevNodes.map(node => 
+        node.id === nodeId 
+          ? { ...node, x: node.x + deltaX / scale, y: node.y + deltaY / scale }
+          : node
+      )
+    );
+  }, [scale]);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent, nodeId: string) => {
+    e.stopPropagation();
+    setDraggedNode(nodeId);
+    
+    const startX = e.clientX;
+    const startY = e.clientY;
+    
+    const handleMouseMove = (e: MouseEvent) => {
+      const deltaX = e.clientX - startX;
+      const deltaY = e.clientY - startY;
+      handleNodeDrag(nodeId, deltaX, deltaY);
+    };
+    
+    const handleMouseUp = () => {
+      setDraggedNode(null);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }, [handleNodeDrag]);
+
   return (
     <div className="h-full bg-background-tertiary relative overflow-hidden">
       {/* Graph Canvas */}
@@ -132,10 +168,12 @@ export const GraphView = () => {
       >
         <g transform={`translate(${offset.x}, ${offset.y}) scale(${scale})`}>
           {/* Connections */}
-          {mockNodes.map((node) =>
+          {nodes.map((node) =>
             node.connections.map((targetId) => {
-              const targetNode = mockNodes.find((n) => n.id === targetId);
+              const targetNode = nodes.find((n) => n.id === targetId);
               if (!targetNode) return null;
+              
+              const isHighlighted = hoveredNode === node.id || hoveredNode === targetId;
               
               return (
                 <line
@@ -144,46 +182,68 @@ export const GraphView = () => {
                   y1={node.y}
                   x2={targetNode.x}
                   y2={targetNode.y}
-                  stroke="hsl(var(--primary))"
-                  strokeWidth="2"
-                  opacity="0.6"
-                  className="animate-pulse"
+                  stroke={isHighlighted ? getNodeColor(node.details.riskLevel) : "hsl(var(--primary))"}
+                  strokeWidth={isHighlighted ? "4" : "2"}
+                  opacity={isHighlighted ? "0.8" : "0.4"}
+                  className={isHighlighted ? "animate-pulse" : "transition-all duration-300"}
+                  style={{
+                    filter: isHighlighted ? `drop-shadow(0 0 8px ${getNodeColor(node.details.riskLevel)})` : 'none'
+                  }}
                 />
               );
             })
           )}
 
           {/* Nodes */}
-          {mockNodes.map((node) => {
+          {nodes.map((node) => {
             const Icon = getNodeIcon(node.type);
+            const isHovered = hoveredNode === node.id;
+            const isSelected = selectedNode?.id === node.id;
+            const isDragged = draggedNode === node.id;
+            
             return (
               <g
                 key={node.id}
                 transform={`translate(${node.x}, ${node.y})`}
-                className="cursor-pointer transition-all duration-200 ease-smooth"
-                style={{ transformOrigin: '0 0' }}
-                onMouseEnter={(e) => {
-                  const g = e.currentTarget;
-                  g.style.transform = `translate(${node.x}px, ${node.y}px) scale(1.1)`;
+                className={`cursor-pointer transition-all duration-300 ease-smooth ${isDragged ? 'cursor-grabbing' : 'cursor-grab'}`}
+                style={{ 
+                  transformOrigin: '0 0',
+                  transform: `translate(${node.x}px, ${node.y}px) scale(${isHovered || isDragged ? 1.2 : isSelected ? 1.1 : 1})`
                 }}
-                onMouseLeave={(e) => {
-                  const g = e.currentTarget;
-                  g.style.transform = `translate(${node.x}px, ${node.y}px) scale(1)`;
-                }}
+                onMouseEnter={() => setHoveredNode(node.id)}
+                onMouseLeave={() => setHoveredNode(null)}
+                onMouseDown={(e) => handleMouseDown(e, node.id)}
                 onClick={(e) => {
                   e.stopPropagation();
                   setSelectedNode(node);
                 }}
               >
-                {/* Node glow effect */}
+                {/* Outer glow effect */}
                 <circle
                   cx="0"
                   cy="0"
-                  r="35"
+                  r={isHovered || isDragged ? "45" : "35"}
                   fill={getNodeColor(node.details.riskLevel)}
-                  opacity="0.2"
-                  className="animate-pulse"
+                  opacity={isHovered || isDragged ? "0.4" : "0.2"}
+                  className={isHovered || isDragged ? "animate-pulse" : ""}
+                  style={{
+                    filter: isHovered || isDragged ? `blur(3px)` : 'blur(1px)',
+                    transition: 'all 0.3s ease'
+                  }}
                 />
+                
+                {/* Middle glow */}
+                {(isHovered || isDragged) && (
+                  <circle
+                    cx="0"
+                    cy="0"
+                    r="30"
+                    fill={getNodeColor(node.details.riskLevel)}
+                    opacity="0.6"
+                    className="animate-pulse"
+                    style={{ filter: 'blur(2px)' }}
+                  />
+                )}
                 
                 {/* Node background */}
                 <circle
@@ -192,14 +252,48 @@ export const GraphView = () => {
                   r="25"
                   fill="hsl(var(--card))"
                   stroke={getNodeColor(node.details.riskLevel)}
-                  strokeWidth="3"
+                  strokeWidth={isSelected ? "4" : "3"}
+                  className="transition-all duration-300"
+                  style={{
+                    filter: isHovered || isDragged ? `drop-shadow(0 0 15px ${getNodeColor(node.details.riskLevel)})` : 
+                            isSelected ? `drop-shadow(0 0 8px ${getNodeColor(node.details.riskLevel)})` : 'none'
+                  }}
                 />
                 
+                {/* Selection ring */}
+                {isSelected && (
+                  <circle
+                    cx="0"
+                    cy="0"
+                    r="30"
+                    fill="none"
+                    stroke={getNodeColor(node.details.riskLevel)}
+                    strokeWidth="2"
+                    strokeDasharray="4 4"
+                    opacity="0.8"
+                    className="animate-spin"
+                    style={{ animationDuration: '3s' }}
+                  />
+                )}
+                
                 {/* Node icon */}
-                <foreignObject x="-12" y="-12" width="24" height="24" className="pointer-events-none">
+                <foreignObject 
+                  x="-12" 
+                  y="-12" 
+                  width="24" 
+                  height="24" 
+                  className="pointer-events-none transition-all duration-300"
+                  style={{
+                    transform: isHovered || isDragged ? 'scale(1.2)' : 'scale(1)',
+                    filter: isHovered || isDragged ? `drop-shadow(0 0 5px ${getNodeColor(node.details.riskLevel)})` : 'none'
+                  }}
+                >
                   <Icon
-                    className="w-6 h-6"
-                    style={{ color: getNodeColor(node.details.riskLevel) }}
+                    className="w-6 h-6 transition-all duration-300"
+                    style={{ 
+                      color: getNodeColor(node.details.riskLevel),
+                      filter: isHovered || isDragged ? 'brightness(1.3)' : 'brightness(1)'
+                    }}
                   />
                 </foreignObject>
                 
@@ -208,11 +302,52 @@ export const GraphView = () => {
                   x="0"
                   y="45"
                   textAnchor="middle"
-                  className="fill-foreground text-sm font-medium pointer-events-none select-none"
-                  style={{ fontSize: "12px" }}
+                  className="fill-foreground font-medium pointer-events-none select-none transition-all duration-300"
+                  style={{ 
+                    fontSize: isHovered || isDragged ? "14px" : "12px",
+                    filter: isHovered || isDragged ? `drop-shadow(0 0 3px hsl(var(--foreground)))` : 'none'
+                  }}
                 >
                   {node.label.length > 15 ? node.label.slice(0, 15) + "..." : node.label}
                 </text>
+                
+                {/* Hover tooltip */}
+                {isHovered && (
+                  <g>
+                    <rect
+                      x="-60"
+                      y="-80"
+                      width="120"
+                      height="30"
+                      fill="hsl(var(--popover))"
+                      stroke="hsl(var(--border))"
+                      strokeWidth="1"
+                      rx="6"
+                      className="animate-fade-in"
+                      style={{
+                        filter: 'drop-shadow(0 4px 6px rgb(0 0 0 / 0.1))'
+                      }}
+                    />
+                    <text
+                      x="0"
+                      y="-68"
+                      textAnchor="middle"
+                      className="fill-popover-foreground text-xs font-medium pointer-events-none select-none"
+                      style={{ fontSize: "10px" }}
+                    >
+                      {node.details.riskLevel.toUpperCase()}
+                    </text>
+                    <text
+                      x="0"
+                      y="-58"
+                      textAnchor="middle"
+                      className="fill-muted-foreground text-xs pointer-events-none select-none"
+                      style={{ fontSize: "9px" }}
+                    >
+                      Click to select
+                    </text>
+                  </g>
+                )}
               </g>
             );
           })}
