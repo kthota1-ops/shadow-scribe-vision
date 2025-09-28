@@ -31,7 +31,23 @@ export const VideoPlayer = () => {
   }, [currentTime, duration]);
 
   const handlePlayPause = () => {
-    setIsPlaying(!isPlaying);
+    const newPlayingState = !isPlaying;
+    setIsPlaying(newPlayingState);
+    
+    // Show controls when toggling play/pause
+    setShowControls(true);
+    
+    // Reset auto-hide timer
+    if (hideControlsTimeout.current) {
+      clearTimeout(hideControlsTimeout.current);
+    }
+    
+    // Hide controls after 3 seconds if playing
+    if (newPlayingState) {
+      hideControlsTimeout.current = setTimeout(() => {
+        setShowControls(false);
+      }, 3000);
+    }
   };
 
   const handleSeek = (value: number[]) => {
@@ -124,11 +140,19 @@ export const VideoPlayer = () => {
                 onClick={handlePlayPause}
                 variant="ghost"
                 size="icon"
-                className="w-20 h-20 rounded-full bg-primary/20 hover:bg-primary/30 backdrop-blur-sm"
+                className="w-20 h-20 rounded-full bg-primary/20 hover:bg-primary/30 backdrop-blur-sm border-2 border-primary/40"
               >
-                <Play className="w-10 h-10 text-primary" />
+                <Play className="w-10 h-10 text-primary ml-1" />
               </Button>
             </div>
+          )}
+
+          {/* Click to pause overlay when playing */}
+          {isPlaying && (
+            <div 
+              className="absolute inset-0 cursor-pointer"
+              onClick={handlePlayPause}
+            />
           )}
         </div>
 
@@ -157,8 +181,17 @@ export const VideoPlayer = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               {/* Play/Pause */}
-              <Button onClick={handlePlayPause} variant="ghost" size="icon">
-                {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+              <Button 
+                onClick={handlePlayPause} 
+                variant="ghost" 
+                size="icon"
+                className="hover:bg-primary/20"
+              >
+                {isPlaying ? (
+                  <Pause className="w-5 h-5 text-primary" />
+                ) : (
+                  <Play className="w-5 h-5 text-primary" />
+                )}
               </Button>
 
               {/* Rewind */}
