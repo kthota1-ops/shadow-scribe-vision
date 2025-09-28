@@ -4,9 +4,17 @@ import { GraphView } from "./GraphView";
 import { VideoPlayer } from "./VideoPlayer";
 import { FileUpload } from "./FileUpload";
 import { Report } from "./Report";
+import { PreviousAnalysis } from "./PreviousAnalysis";
 
 export const Workspace = () => {
   const [activeTab, setActiveTab] = useState("upload");
+
+  const handleSelectReport = (report: any) => {
+    // Switch to report tab and load the selected report data
+    setActiveTab("report");
+    // Here you would typically load the report data into the Report component
+    console.log("Selected report:", report);
+  };
 
   return (
     <div className="h-screen flex flex-col bg-gradient-subtle">
@@ -34,6 +42,9 @@ export const Workspace = () => {
             <TabsTrigger value="report" className="flex-1 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               Report
             </TabsTrigger>
+            <TabsTrigger value="previous" className="flex-1 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              Previous Analysis
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -49,6 +60,9 @@ export const Workspace = () => {
           </TabsContent>
           <TabsContent value="report" className="h-full m-0">
             <Report />
+          </TabsContent>
+          <TabsContent value="previous" className="h-full m-0">
+            <PreviousAnalysis onSelectReport={handleSelectReport} />
           </TabsContent>
         </div>
       </Tabs>
