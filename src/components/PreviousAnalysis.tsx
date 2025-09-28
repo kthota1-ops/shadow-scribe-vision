@@ -8,7 +8,7 @@ import { Eye, Download, Trash2 } from "lucide-react";
 interface AnalysisReport {
   id: string;
   date: string;
-  fileName: string;
+  caseName: string;
   fileHash: string;
   threatLevel: "Low" | "Medium" | "High" | "Critical";
   status: "Completed" | "Processing" | "Failed";
@@ -20,7 +20,7 @@ const mockReports: AnalysisReport[] = [
   {
     id: "1",
     date: "2024-01-15",
-    fileName: "malicious_payload.exe",
+    caseName: "Operation Shadowbyte",
     fileHash: "a1b2c3d4e5f67890abcdef1234567890",
     threatLevel: "Critical",
     status: "Completed",
@@ -30,7 +30,7 @@ const mockReports: AnalysisReport[] = [
   {
     id: "2",
     date: "2024-01-14",
-    fileName: "suspicious_doc.pdf",
+    caseName: "Phantom Document Attack",
     fileHash: "f1e2d3c4b5a69870fedcba0987654321",
     threatLevel: "High",
     status: "Completed",
@@ -40,7 +40,7 @@ const mockReports: AnalysisReport[] = [
   {
     id: "3",
     date: "2024-01-13",
-    fileName: "unknown_binary.bin",
+    caseName: "Binary Ghost Investigation",
     fileHash: "9876543210abcdef0123456789abcdef",
     threatLevel: "Medium",
     status: "Processing",
@@ -50,7 +50,7 @@ const mockReports: AnalysisReport[] = [
   {
     id: "4",
     date: "2024-01-12",
-    fileName: "clean_file.txt",
+    caseName: "Clean File Verification",
     fileHash: "abcdef1234567890fedcba0987654321",
     threatLevel: "Low",
     status: "Completed",
@@ -60,7 +60,7 @@ const mockReports: AnalysisReport[] = [
   {
     id: "5",
     date: "2024-01-11",
-    fileName: "trojan_dropper.exe",
+    caseName: "Trojan Hunter Case",
     fileHash: "1234567890abcdeffedcba0987654321",
     threatLevel: "Critical",
     status: "Failed",
@@ -122,7 +122,7 @@ export const PreviousAnalysis = ({ onSelectReport }: PreviousAnalysisProps) => {
               <TableHeader>
                 <TableRow className="border-border hover:bg-background-tertiary/50">
                   <TableHead className="text-muted-foreground font-semibold">Date</TableHead>
-                  <TableHead className="text-muted-foreground font-semibold">File Name</TableHead>
+                  <TableHead className="text-muted-foreground font-semibold">Case Name</TableHead>
                   <TableHead className="text-muted-foreground font-semibold">Hash (SHA256)</TableHead>
                   <TableHead className="text-muted-foreground font-semibold">Size</TableHead>
                   <TableHead className="text-muted-foreground font-semibold">Threat Level</TableHead>
@@ -147,7 +147,7 @@ export const PreviousAnalysis = ({ onSelectReport }: PreviousAnalysisProps) => {
                     </TableCell>
                     <TableCell className="text-foreground">
                       <div className="overflow-x-auto max-w-[200px]">
-                        <span className="whitespace-nowrap">{report.fileName}</span>
+                        <span className="whitespace-nowrap">{report.caseName}</span>
                       </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground font-mono text-xs">
