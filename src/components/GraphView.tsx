@@ -466,7 +466,9 @@ export const GraphView = () => {
                 return <Icon className="w-6 h-6 flex-shrink-0" style={{ color: getNodeColor(selectedNode.details.riskLevel) }} />;
               })()}
               <div className="min-w-0 flex-1">
-                <h3 className="font-semibold text-foreground truncate">{selectedNode.label}</h3>
+                <div className="overflow-x-auto">
+                  <h3 className="font-semibold text-foreground whitespace-nowrap">{selectedNode.label}</h3>
+                </div>
                 <p className="text-sm text-muted-foreground capitalize">{selectedNode.type}</p>
               </div>
             </div>
@@ -494,10 +496,12 @@ export const GraphView = () => {
                 <p className="text-sm text-muted-foreground mb-2">Metadata</p>
                 <div className="space-y-1">
                   {Object.entries(selectedNode.details.metadata).slice(0, 2).map(([key, value]) => (
-                    <div key={key} className="flex justify-between text-xs gap-2">
-                      <span className="text-muted-foreground flex-shrink-0">{key}:</span>
-                      <span className="text-foreground font-mono break-all text-right truncate">{value}</span>
-                    </div>
+                     <div key={key} className="flex justify-between text-xs gap-2">
+                       <span className="text-muted-foreground flex-shrink-0">{key}:</span>
+                       <div className="overflow-x-auto text-right flex-1">
+                         <span className="text-foreground font-mono whitespace-nowrap">{value}</span>
+                       </div>
+                     </div>
                   ))}
                   {Object.entries(selectedNode.details.metadata).length > 2 && (
                     <p className="text-xs text-muted-foreground">... and more</p>
@@ -549,7 +553,9 @@ export const GraphView = () => {
             >
               <Icon className="w-6 h-6 flex-shrink-0" style={{ color: getNodeColor(node.details.riskLevel) }} />
               <div className="min-w-0 flex-1">
-                <h3 className="font-semibold text-foreground">{node.label}</h3>
+                <div className="overflow-x-auto">
+                  <h3 className="font-semibold text-foreground whitespace-nowrap">{node.label}</h3>
+                </div>
                 <p className="text-sm text-muted-foreground capitalize">{node.type}</p>
               </div>
             </div>
