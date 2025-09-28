@@ -2,9 +2,10 @@ import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { GraphView } from "./GraphView";
 import { VideoPlayer } from "./VideoPlayer";
+import { FileUpload } from "./FileUpload";
 
 export const Workspace = () => {
-  const [activeTab, setActiveTab] = useState("graph");
+  const [activeTab, setActiveTab] = useState("upload");
 
   return (
     <div className="h-screen flex flex-col bg-gradient-subtle">
@@ -20,6 +21,9 @@ export const Workspace = () => {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
         <div className="border-b border-border bg-background-secondary/30">
           <TabsList className="h-12 p-1 m-4 bg-background-tertiary">
+            <TabsTrigger value="upload" className="flex-1 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              Upload Files
+            </TabsTrigger>
             <TabsTrigger value="graph" className="flex-1 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               Graph View
             </TabsTrigger>
@@ -30,6 +34,9 @@ export const Workspace = () => {
         </div>
 
         <div className="flex-1">
+          <TabsContent value="upload" className="h-full m-0 p-6">
+            <FileUpload />
+          </TabsContent>
           <TabsContent value="graph" className="h-full m-0">
             <GraphView />
           </TabsContent>
