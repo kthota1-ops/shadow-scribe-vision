@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { GraphView } from "./GraphView";
 import { VideoPlayer } from "./VideoPlayer";
+import { UserProfile } from "./UserProfile";
 import { FileUpload } from "./FileUpload";
 import { Report } from "./Report";
 import { PreviousAnalysis } from "./PreviousAnalysis";
@@ -19,11 +20,19 @@ export const Workspace = () => {
   return (
     <div className="h-screen flex flex-col bg-gradient-subtle">
       {/* Header */}
-      <header className="h-16 border-b border-border bg-background-secondary/50 backdrop-blur-sm flex items-center px-6">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Malware Analysis Platform</h1>
-          <p className="text-sm text-muted-foreground">Advanced threat intelligence and visualization</p>
+      <header className="h-16 border-b border-border bg-background-secondary/50 backdrop-blur-sm flex items-center justify-between px-6">
+        <div className="flex items-center gap-4">
+          <img 
+            src="/logo.png" 
+            alt="Malware Analysis Platform" 
+            className="w-8 h-8 object-contain"
+          />
+          <div>
+            <h1 className="text-xl font-semibold text-foreground">Malware Analysis Platform</h1>
+            <p className="text-sm text-muted-foreground">Advanced threat intelligence and visualization</p>
+          </div>
         </div>
+        <UserProfile />
       </header>
 
       {/* Tabs */}
